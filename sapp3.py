@@ -57,7 +57,7 @@ pages = {
     "About Us": "About Us"
 }
 
-# 渲染侧边导航按钮
+# making sidebar buttons
 for label, page in pages.items():
     if st.sidebar.button(label, use_container_width=True, 
                          type="primary" if st.session_state.current_page == page else "secondary"):
@@ -69,7 +69,7 @@ page = st.session_state.current_page
 
 # Top section - User inputs (always visible)
 st.title("Solar Weather & Air Quality Dashboard")
-st.markdown("Go ahead and enter the location and date you're interested in and you'll be amazed at the detailed historical weather and air quality data you can access!")
+st.markdown("Select any geographic location to access comprehensive historical weather and air quality data.")
 
 # Initialize session state for coordinates
 if 'latitude' not in st.session_state:
@@ -97,13 +97,13 @@ if input_method == "User Input":
         st.session_state.longitude = st.number_input("Longitude", value=13.41, format="%.4f")
         st.info("Select longitude between -180° (West) and 180° (East)")
 
-# 初始化 folium 地图
+# initialise folium map
 m = folium.Map(
     location=[st.session_state.latitude, st.session_state.longitude],
     zoom_start=8,  
 )
 
-# 加 marker
+# add marker
 folium.Marker(
     [st.session_state.latitude, st.session_state.longitude],
     popup=f"{st.session_state.latitude:.4f}°N, {st.session_state.longitude:.4f}°E",
@@ -111,13 +111,13 @@ folium.Marker(
     icon=folium.Icon(color='red', icon='info-sign')
 ).add_to(m)
 
-# 添加点击坐标提示
+# displays coordinates
 m.add_child(folium.LatLngPopup())
 
-# 🌟 只调用一次 st_folium
+# once adjusted st_folium
 map_data = st_folium(m, width=725, height=500, returned_objects=["last_clicked", "last_object_clicked"])
 
-# 如果是点击选点模式 & 用户点击了地图
+# User input selection method
 if input_method == "Click on Map":
     st.write("**Click anywhere on the map to select coordinates**")
     
@@ -131,7 +131,7 @@ if input_method == "Click on Map":
 latitude = st.session_state.latitude
 longitude = st.session_state.longitude
 
-# 3. 调用函数获取城市国家名
+# 3. Retrieving name of country and specific city based on selected location
 try:
     with st.spinner("Retrieving city and country name..."):
         city, country = reverse_geocode(latitude, longitude)
@@ -178,9 +178,9 @@ if st.button("Search"):
             st.error("Unable to retrieve data. Please check your input or try again later.")
             st.session_state.data_loaded = False
         else:
-            # 先合并前两个DataFrame
+            # Makes it into two DataFrame
             temp_df = pd.merge(weather_df, air_quality_df, on="date", how="inner")
-            # 再合并第三个DataFrame
+            # Makes it into three DataFrame
             st.session_state.combined_df = pd.merge(temp_df, radiation_df, on="date", how="inner")
             st.session_state.data_loaded = True
             st.success("Data retrieval successful!")
@@ -238,7 +238,7 @@ elif page == "Visualization":
             df['date'] = pd.to_datetime(df['date'])
         
         # Visualization tabs
-        tab1, tab2, tab3 = st.tabs(["Weather Data", "Air Quality", "Association Analysis"])
+        tab1, tab2 = st.tabs(["Weather Data", "Air Quality"])
         
         with tab1:
             st.subheader("Weather Parameters")
@@ -300,52 +300,6 @@ elif page == "Visualization":
                           title='Aerosol Optical Depth Over Time',
                           color_discrete_sequence=['darkblue'])
             st.plotly_chart(fig3, use_container_width=True)
-        
-        
-        with tab3:
-            st.subheader("Association Analysis")
-            
-            # Correlation heatmap
-            # 检查并处理数据
-            numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
-
-            # 如果没有自动检测到数值列，尝试强制转换
-            if len(numeric_cols) < 2:
-                df_numeric = df.apply(pd.to_numeric, errors='coerce')
-                numeric_cols = df_numeric.dropna(axis=1, how='all').columns.tolist()
-
-            # 过滤掉常数列
-            numeric_cols = [col for col in numeric_cols if df[col].nunique() > 1]
-
-            # 绘制热力图
-            if len(numeric_cols) >= 2:
-                corr_matrix = df[numeric_cols].corr()
-                fig4 = px.imshow(
-                    corr_matrix,
-                    text_auto=True,
-                    aspect="auto",
-                    title="Parameter Correlation Matrix",
-                    color_continuous_scale='RdBu_r'
-                )
-                st.plotly_chart(fig4, use_container_width=True)
-            else:
-                st.error("Can't draw heatmap, no numeric columns")
-            
-            # Daily averages
-            df_daily = df.set_index('date').resample('D').mean()
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                fig5 = px.scatter(df_daily, x='temperature_2m', y='pm2_5',
-                                title='Temperature vs PM2.5 (Daily Averages)',
-                                trendline='ols')
-                st.plotly_chart(fig5, use_container_width=True)
-            
-            with col2:
-                fig6 = px.scatter(df_daily, x='cloud_cover', y='uv_index',
-                                title='Cloud Cover vs UV Index (Daily Averages)',
-                                trendline='ols')
-                st.plotly_chart(fig6, use_container_width=True)
                             
     else:
         st.info("Please query the data first to view the visualisation chart.")
@@ -354,7 +308,7 @@ elif page == "Predictions":
     st.header("Features Predictions")
     
     if not st.session_state.data_loaded or st.session_state.combined_df.empty:
-        st.info("🔍 Please query the data first to make predictions.")
+        st.info("Please query the data first to make predictions.")
     else:
         # Initialize forecast results in session state if not exists
         if 'forecast_results' not in st.session_state:
@@ -364,31 +318,31 @@ elif page == "Predictions":
         if 'forecast_config' not in st.session_state:
             st.session_state.forecast_config = {}
         
-        # 用户选择时间范围和频率
-        st.subheader("⚙️ Forecast Configuration")
+        # User input desired predictive range
+        st.subheader("Forecast Configuration")
         col1, col2 = st.columns(2)
         
         with col1:
-            option = st.radio("🔍 Choose predictive model time range:", ["Days", "Weeks", "Years"])
+            option = st.radio("Choose predictive model time range:", ["Days", "Weeks", "Years"])
                               
         
         today = date.today() - timedelta(days=1)
 
         if option == "Years":
-            years = st.number_input("📅 Number of Years", min_value=1, max_value=10, value=1)
+            years = st.number_input("Number of Years", min_value=1, max_value=10, value=1)
         elif option == "Weeks":
-            weeks = st.number_input("📅 Number of Weeks", min_value=1, max_value=52, value=4)
+            weeks = st.number_input("Number of Weeks", min_value=1, max_value=52, value=4)
         else:  # Days
-            days = st.number_input("📅 Number of Days", min_value=1, max_value=365, value=3)
+            days = st.number_input("Number of Days", min_value=1, max_value=365, value=3)
 
-        # 先计算基础单位
+        # Calculating the base units for time
         base_units = {
             "Years": 365*24,
             "Weeks": 7*24,
             "Days": 1*24
         }[option]
 
-        # 再根据频率调整
+        # Adjusts according to frequency
         frequency = "Hourly"
         forecast_periods = base_units * (years if option=="Years" else weeks if option=="Weeks" else days)
         frequency == "Hourly"
@@ -396,20 +350,20 @@ elif page == "Predictions":
         freq_str = "H"
 
 
-        # 配置信息展示卡片
-        st.info(f"🗓️ **Forecast Configuration**\n"
-                f"📅 Forecast Period: {today} → {forecast_end_date}\n"
-                f"⏱️ Duration: {forecast_periods} {frequency.lower()} periods\n"
-                f"🔄 Frequency: {frequency}\n"
-                f"📊 Training Data: {start_date} to {end_date}")
+        # Formatting labels
+        st.info(f"**Forecast Configuration**\n"
+                f"Forecast Period: {today} → {forecast_end_date}\n"
+                f"Duration: {forecast_periods} {frequency.lower()} periods\n"
+                f"Frequency: {frequency}\n"
+                f"Training Data: {start_date} to {end_date}")
 
-        # 调用你的 forecast 函数
+        # Adjust your forecast options
         col1, col2 = st.columns([3, 1])
         with col1:
-            run_forecast = st.button("🚀 Run Forecast", type="primary", use_container_width=True)
+            run_forecast = st.button("Run Forecast", type="primary", use_container_width=True)
         with col2:
             if st.session_state.forecast_results:
-                clear_forecast = st.button("🗑️ Clear Results", type="secondary", use_container_width=True)
+                clear_forecast = st.button("Clear Results", type="secondary", use_container_width=True)
                 if clear_forecast:
                     st.session_state.forecast_results = {}
                     st.session_state.model_performance = {}
@@ -417,16 +371,16 @@ elif page == "Predictions":
                     st.rerun()
 
         if run_forecast:
-            with st.spinner("📡 Forecasting in progress... This may take a few moments..."):
+            with st.spinner("Forecasting in progress... This may take a few moments..."):
                 try:
                     # Store forecast configuration
                     st.session_state.forecast_config = {
                     'option': option,
                     'frequency': frequency,
                     'periods': forecast_periods,
-                    'forecast_start_date': today,           # ✅ Forecast starts today
-                    'forecast_end_date': forecast_end_date, # ✅ Calculated forecast end
-                    'data_end_date': end_date,              # ✅ User's data collection end date
+                    'forecast_start_date': today,           # Forecast starts today
+                    'forecast_end_date': forecast_end_date, # Calculated forecast end
+                    'data_end_date': end_date,              # User's data collection end date
                     'freq_str': freq_str
                 }
                     
@@ -620,20 +574,20 @@ elif page == "Predictions":
                     status_text.empty()
                     
                     if forecast_results:
-                        st.success(f"✅ Successfully forecasted {len(forecast_results)} variables!")
+                        st.success(f"Successfully forecasted {len(forecast_results)} variables!")
                         
                         # Store results in session state
                         st.session_state.forecast_results = forecast_results
                         st.session_state.model_performance = model_performance
                         
                 except Exception as e:
-                    st.error(f"❌ Error during forecasting: {str(e)}")
+                    st.error(f"Error during forecasting: {str(e)}")
                     st.write("Please check your data and try again.")
 
         # Display results if they exist (persistent display)
         if st.session_state.forecast_results:
             st.divider()
-            st.subheader("📊 Forecast Results")
+            st.subheader("Forecast Results")
             
             # Get config for display
             config = st.session_state.forecast_config
@@ -641,24 +595,24 @@ elif page == "Predictions":
             # Display forecast summary metrics
             col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric("📈 Variables Forecasted", len(st.session_state.forecast_results))
+                st.metric("Variables Forecasted", len(st.session_state.forecast_results))
             with col2:
-                st.metric("📅 Forecast Period", f"{config.get('periods', 'N/A')} {config.get('frequency', '').lower()}")
+                st.metric("Forecast Period", f"{config.get('periods', 'N/A')} {config.get('frequency', '').lower()}")
             with col3:
                 # Show forecast start date (today)
                 forecast_start = config.get('forecast_start_date', 'N/A')
                 if isinstance(forecast_start, date):
                     forecast_start = str(forecast_start)
-                st.metric("🎯 Forecast Start", forecast_start)
+                st.metric("Forecast Start", forecast_start)
             with col4:
                 # Show forecast end date (calculated)
                 forecast_end = config.get('forecast_end_date', 'N/A')
                 if isinstance(forecast_end, date):
                     forecast_end = str(forecast_end)
-                st.metric("🏁 Forecast End", forecast_end)
+                st.metric("Forecast End", forecast_end)
             
             # Create tabs for different views
-            tab1, tab2, tab3, tab4 = st.tabs(["Forecast Data", "Interactive Charts", "Combined View", "Performance"])
+            tab1, tab2, tab3 = st.tabs(["Forecast Data", "Interactive Charts", "Performance"])
             
             with tab1:
                 st.subheader("Forecasted Data Table")
@@ -668,7 +622,7 @@ elif page == "Predictions":
                     future_dates = list(st.session_state.forecast_results.values())[0]['dates']
                     forecast_df = pd.DataFrame({'date': future_dates})
                     
-                            # 添加格式化（关键修改）
+                            # Format into grids
                     forecast_df['date'] = forecast_df['date'].dt.strftime('%Y-%m-%d')   
                     
                     for column, results in st.session_state.forecast_results.items():
@@ -694,8 +648,6 @@ elif page == "Predictions":
                         mime="text/csv",
                         use_container_width=True
                     )
-            
-
             
             with tab2:
                 st.subheader("Interactive Forecast Charts")
@@ -763,7 +715,7 @@ elif page == "Predictions":
                         # Close the figure to free memory
                         plt.close(fig)
    
-            with tab4:
+            with tab3:
                 st.subheader("Model Performance Metrics")
                 
                 if st.session_state.model_performance:
@@ -879,8 +831,8 @@ elif page == "Estimation":
             # elec_rate = st.number_input("Electricity Rate (RM/kWh)", min_value=0.1, value=0.218, step=0.01)
 
             years = st.number_input("How many years?", min_value=1, max_value=100, value=20, step=1)
-            additional_cost= 5000
-            fixed_cost=500
+            additional_cost= 1000
+            fixed_cost=1000
    
 
         with col2:
@@ -894,32 +846,59 @@ elif page == "Estimation":
         cost_list = []
         profit_list = []
         
+        def normalise(series):
+            return (series - series.min()) / (series.max() - series.min())
         
-        
-                
-#         efficiency = 0.98 **years
-#         maintenance_cost = 40 ** (1/efficiency)
-#         energy_generated_per_day= system_size *  avg_radiation * daily_sun_hours *efficiency
-#         total_cost = (energy_generated_per_day * cost_per_kw)* (year*365) + maintenance_cost
-#         total_revenue = energy_generated_per_day * elec_charge * (year*365)
-#         profit = total_revenue - total_cost
+        weights = {
+            "temperature_2m_forecast": 0.15,
+            "relative_humidity_2m_forecast": 0.10,
+            "rain_forecast": 0.05,
+            "cloud_cover_forecast": 0.20,
+            "wind_speed_10m_forecast": 0.10,
+            "pm10_forecast": 0.10,
+            "uv_index_forecast": 0.15,
+            "dust_forecast": 0.05,
+            "aerosol_optical_depth_forecast": 0.10,
+        }
+
+        df = st.session_state.forecast_df.copy()
+
+        # Normalize all relevant forecasted columns
+        for col in weights:
+            df[f'norm_{col}'] = normalise(df[col])
+
+        # Compute weighted sum as weather penalty
+        df["weather_penalty"] = sum(
+            weights[col] * df[f'norm_{col}'] for col in weights
+        )
+
+        # Average penalty across all forecasted records
+        mean_weather_penalty = df["weather_penalty"].mean()
 
         for years in year_list:
-            efficiency = 0.97 ** years  
-            maintenance_cost = 100 ** (1 / efficiency)
-            panel_unit = system_size / 5
+            base_efficiency = 0.97 ** years
+            efficiency = base_efficiency - mean_weather_penalty * 0.07
 
+            maintenance_cost = 200 * (1 / efficiency) ** 2
+            panel_unit = system_size / 5
+            elec_rate_increase = elec_charge * (1.055 ** years)
+            
             energy_generated_per_day = system_size * (avg_radiation/1000) * daily_sun_hours * efficiency
 
-            total_cost =  ((energy_generated_per_day * cost_per_kw)/panel_unit)* (years*365) + (maintenance_cost+fixed_cost+additional_cost)*panel_unit
-            total_revenue = energy_generated_per_day * elec_charge * (years*365) 
+            capital_cost = (fixed_cost + additional_cost + maintenance_cost) * panel_unit
+            total_cost =  ((energy_generated_per_day * cost_per_kw)/panel_unit) * 365 + capital_cost + (capital_cost * 0.005)
+            total_revenue = energy_generated_per_day * elec_rate_increase * 365
             net_profit = total_revenue - total_cost 
+
+            st.write("Mean Weather Penalty:", mean_weather_penalty)
+            st.write("Year:", years, " | Efficiency:", efficiency, " | Maintenance Cost:", maintenance_cost)
+
 
             revenue_list.append(total_revenue)
             cost_list.append(total_cost)
             profit_list.append(net_profit)
 
-        # 生成 Plotly 图表
+        # Develop Plotly ROI graph
         import plotly.graph_objects as go
         fig = go.Figure()
 
@@ -989,5 +968,5 @@ if page == "About Us":
 
 
 
-# streamlit run sapp.py
+# streamlit run sapp3.py
 
